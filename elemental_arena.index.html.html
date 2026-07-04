@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Elemental Arena</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --bg-void:#0b0d14;
+    --rune-gold:#e8c15a;
+    --fire:#ff5a2e;
+    --water:#33b1e8;
+    --earth:#a97f43;
+    --storm:#f4e04d;
+    --hp:#e8483a;
+    --mana:#3aa0e8;
+    --gold:#e8c15a;
+    --text:#e9e4d8;
+    --text-dim:#8b8778;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;overflow:hidden;
+    background:radial-gradient(ellipse at center, #171a24 0%, var(--bg-void) 70%);
+    font-family:'Georgia', 'Palatino Linotype', serif;
+    color:var(--text);
+    user-select:none;
+  }
+  #stage{
+    position:relative;
+    width:1200px;height:750px;
+    margin:12px auto 0 auto;
+    border:2px solid #2c3040;
+    border-radius:6px;
+    box-shadow:0 0 60px rgba(0,0,0,0.6), inset 0 0 80px rgba(0,0,0,0.5);
+    overflow:hidden;
+  }
+  canvas{display:block;background:#0d1018;cursor:crosshair;}
+
+  .overlay{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:rgba(8,9,14,0.9);
+    gap:16px;
+    text-align:center;
+    z-index:10;
+    overflow-y:auto;
+    padding:20px 0;
+  }
+  .hidden{display:none !important;}
+
+  .title{
+    font-size:52px;
+    letter-spacing:4px;
+    color:var(--rune-gold);
+    text-shadow:0 0 18px rgba(232,193,90,0.55), 0 0 40px rgba(255,90,46,0.25);
+    margin:0;
+    font-weight:normal;
+  }
+  .subtitle{
+    color:var(--text-dim);
+    font-size:16px;
+    letter-spacing:2px;
+    margin-top:-8px;
+    text-transform:uppercase;
+  }
+  .elem-strip{display:flex;gap:14px;margin:6px 0 4px 0;}
+  .elem-strip span{
+    width:14px;height:14px;border-radius:50%;display:inline-block;
+    box-shadow:0 0 10px currentColor;
+  }
+  .elem-fire{background:var(--fire);color:var(--fire);}
+  .elem-water{background:var(--water);color:var(--water);}
+  .elem-earth{background:var(--earth);color:var(--earth);}
+  .elem-storm{background:var(--storm);color:var(--storm);}
+
+  button.rune-btn{
+    font-family:inherit;
+    background:linear-gradient(180deg,#1c2030,#14171f);
+    border:1px solid #3a3f52;
+    color:var(--text);
+    padding:13px 34px;
+    font-size:17px;
+    letter-spacing:2px;
+    border-radius:4px;
+    cursor:pointer;
+    transition:all .15s ease;
+    min-width:200px;
+  }
+  button.rune-btn:hover{
+    border-color:var(--rune-gold);
+    color:var(--rune-gold);
+    box-shadow:0 0 16px rgba(232,193,90,0.35);
+    transform:translateY(-1px);
+  }
+  button.rune-btn.secondary{min-width:160px;font-size:14px;padding:10px 24px;opacity:0.85;}
+  .diff-grid{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;max-width:920px;}
+  .diff-card{
+    width:190px;
+    border:1px solid #333748;
+    border-radius:6px;
+    padding:16px 12px;
+    background:#14171f;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .diff-card:hover{transform:translateY(-4px);box-shadow:0 6px 20px rgba(0,0,0,0.5);}
+  .diff-card h3{margin:4px 0;font-size:20px;letter-spacing:1px;}
+  .diff-card p{margin:2px 0;font-size:12px;color:var(--text-dim);}
+  .diff-easy{border-color:#3c7a3c;} .diff-easy h3{color:#6fd66f;}
+  .diff-medium{border-color:#2f6fa0;} .diff-medium h3{color:var(--water);}
+  .diff-hard{border-color:#a06a2f;} .diff-hard h3{color:#f0a03a;}
+  .diff-impossible{border-color:#8a2f5a;} .diff-impossible h3{color:#f04d8a;}
+
+  .flavor{max-width:640px;color:var(--text-dim);font-size:14px;line-height:1.6;}
+  .stat-line{color:var(--text-dim);font-size:14px;margin:2px 0;}
+  .big-stat{color:var(--rune-gold);font-size:22px;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+
+  .store-section{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;max-width:920px;margin-bottom:6px;}
+  .store-section h3{width:100%;color:var(--text-dim);font-size:12px;letter-spacing:2px;margin:8px 0 2px 0;text-transform:uppercase;}
+  .store-item{width:200px;border:1px solid #333748;border-radius:6px;padding:12px;background:#14171f;text-align:left;}
+  .store-item h4{margin:2px 0 6px 0;font-size:15px;}
+  .store-item p{margin:2px 0;font-size:11.5px;color:var(--text-dim);}
+  .store-item button{
+    margin-top:8px;width:100%;padding:8px;font-size:13px;letter-spacing:1px;
+    background:#1c2030;border:1px solid #3a3f52;color:var(--text);border-radius:4px;cursor:pointer;
+    font-family:inherit;
+  }
+  .store-item button:disabled{opacity:0.4;cursor:not-allowed;}
+  .store-item button:not(:disabled):hover{border-color:var(--rune-gold);color:var(--rune-gold);}
+  .gold-display{color:var(--gold);font-size:20px;letter-spacing:1px;}
+
+  .lb-list{width:100%;max-width:480px;display:flex;flex-direction:column;gap:6px;margin:8px 0;max-height:340px;overflow-y:auto;}
+  .lb-row{
+    display:flex;align-items:center;justify-content:space-between;
+    background:#14171f;border:1px solid #2a2e3d;border-radius:4px;
+    padding:8px 14px;font-size:14px;
+  }
+  .lb-row.lb-top1{border-color:var(--rune-gold);box-shadow:0 0 10px rgba(232,193,90,0.25);}
+  .lb-rank{color:var(--text-dim);width:36px;text-align:left;}
+  .lb-name{flex:1;text-align:left;color:var(--text);}
+  .lb-time{color:var(--rune-gold);font-variant-numeric:tabular-nums;}
+
+  #instructions{
+    position:absolute;
+    bottom:8px;left:50%;
+    transform:translateX(-50%);
+    font-size:12px;
+    color:#5c5f6e;
+    letter-spacing:1px;
+    pointer-events:none;
+    z-index:5;
+    text-align:center;
+    width:100%;
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" width="1200" height="750"></canvas>
+
+  <!-- LOGIN SCREEN -->
+  <div id="loginScreen" class="overlay">
+    <h1 class="title" style="font-size:44px;">WHO GOES THERE?</h1>
+    <div class="subtitle">sign in to begin</div>
+
+    <div id="googleSignInDiv" style="margin:4px 0 2px 0;"></div>
+    <div id="googleSignInStatus" class="stat-line" style="font-size:12px;max-width:400px;"></div>
+
+    <div style="display:flex;align-items:center;gap:10px;width:100%;max-width:300px;margin:8px 0;">
+      <div style="flex:1;height:1px;background:#333748;"></div>
+      <span style="color:var(--text-dim);font-size:11px;letter-spacing:1px;">OR CONTINUE AS GUEST</span>
+      <div style="flex:1;height:1px;background:#333748;"></div>
+    </div>
+
+    <input id="loginNameInput" maxlength="16" placeholder="Your mage name"
+      style="font-family:inherit;background:#14171f;border:1px solid #3a3f52;color:#e9e4d8;padding:12px 16px;border-radius:4px;font-size:15px;text-align:center;min-width:260px;">
+    <div id="loginError" class="stat-line" style="color:var(--hp);min-height:18px;"></div>
+    <button class="rune-btn" id="btnLogin">ENTER AS GUEST</button>
+    <p class="flavor" style="max-width:480px;">Signing in with Google links your progress, gold, and boosts to your Google account. Guest mode uses a simple name with no password, saved only in this browser. Either way, your leaderboard entries are public.</p>
+  </div>
+
+  <!-- START SCREEN -->
+  <div id="startScreen" class="overlay hidden">
+    <h1 class="title">ELEMENTAL ARENA</h1>
+    <div class="subtitle">a mage's trial by fire, water, earth &amp; storm</div>
+    <div class="stat-line" id="welcomeUser"></div>
+    <div class="elem-strip">
+      <span class="elem-fire"></span><span class="elem-water"></span><span class="elem-earth"></span><span class="elem-storm"></span>
+    </div>
+    <p class="flavor">Move with <b>WASD</b>. Aim with the <b>mouse</b>, hold <b>click</b> to channel. Press <b>1-4</b> to switch element.
+    Slay foes to level up and split your bolt into more projectiles. Earn gold to unlock new elements and permanent boosts. Survive every wave, then fell the elemental boss.</p>
+    <p class="flavor" style="margin-top:-8px;">Feeling brave? Run the <b>Full Gauntlet</b> — Easy through Impossible back to back, no restarts — and race for a spot on the online leaderboard.</p>
+    <div class="row">
+      <button class="rune-btn" id="btnToDifficulty">BEGIN</button>
+      <button class="rune-btn" id="btnGauntlet">FULL GAUNTLET</button>
+    </div>
+    <div class="row">
+      <button class="rune-btn secondary" id="btnStore">STORE</button>
+      <button class="rune-btn secondary" id="btnLeaderboard">LEADERBOARD</button>
+    </div>
+    <button class="rune-btn secondary" id="btnLogout" style="min-width:140px;font-size:12px;padding:8px 18px;opacity:0.6;">LOG OUT</button>
+  </div>
+
+  <!-- DIFFICULTY SCREEN -->
+  <div id="difficultyScreen" class="overlay hidden">
+    <h1 class="title" style="font-size:38px;">CHOOSE YOUR TRIAL</h1>
+    <div class="diff-grid">
+      <div class="diff-card diff-easy" data-diff="easy">
+        <h3>EASY</h3>
+        <p>3 waves + boss</p>
+        <p>Boss: Ember Colossus</p>
+        <p>For apprentices</p>
+      </div>
+      <div class="diff-card diff-medium" data-diff="medium">
+        <h3>MEDIUM</h3>
+        <p>4 waves + boss</p>
+        <p>Boss: Frost Sovereign</p>
+        <p>A fair fight</p>
+      </div>
+      <div class="diff-card diff-hard" data-diff="hard">
+        <h3>HARD</h3>
+        <p>4 waves + boss</p>
+        <p>Boss: Storm Titan</p>
+        <p>For veterans</p>
+      </div>
+      <div class="diff-card diff-impossible" data-diff="impossible">
+        <h3>IMPOSSIBLE</h3>
+        <p>5 waves + boss</p>
+        <p>Boss: Chaos Earthwarden</p>
+        <p>Few survive</p>
+      </div>
+    </div>
+    <button class="rune-btn" id="btnBackToStart" style="margin-top:6px;">BACK</button>
+  </div>
+
+  <!-- STORE SCREEN -->
+  <div id="storeScreen" class="overlay hidden">
+    <h1 class="title" style="font-size:34px;">ARCANE STORE</h1>
+    <div class="gold-display" id="storeGold">Gold: 0</div>
+    <div class="store-section" id="storeElements"></div>
+    <div class="store-section" id="storeBoosts"></div>
+    <button class="rune-btn" id="btnStoreBack">BACK</button>
+  </div>
+
+  <!-- LEVEL COMPLETE SCREEN -->
+  <div id="levelCompleteScreen" class="overlay hidden">
+    <h1 class="title" style="font-size:34px;">WAVE CLEARED</h1>
+    <div class="stat-line" id="lcInfo"></div>
+    <div class="row">
+      <button class="rune-btn" id="btnContinueLevel">CONTINUE</button>
+      <button class="rune-btn secondary" id="btnStoreFromLevel">VISIT STORE</button>
+    </div>
+  </div>
+
+  <!-- GAME OVER SCREEN -->
+  <div id="gameOverScreen" class="overlay hidden">
+    <h1 class="title" style="color:var(--hp);font-size:46px;">YOU HAVE FALLEN</h1>
+    <div class="stat-line">Reached: <span id="goLevel" class="big-stat"></span></div>
+    <div class="stat-line">Mage Level: <span id="goPlayerLevel" class="big-stat"></span></div>
+    <div class="row">
+      <button class="rune-btn" id="btnTryAgain">TRY AGAIN</button>
+      <button class="rune-btn secondary" id="btnStoreFromGameOver">STORE</button>
+      <button class="rune-btn secondary" id="btnGoMenu">MAIN MENU</button>
+    </div>
+  </div>
+
+  <!-- VICTORY SCREEN -->
+  <div id="victoryScreen" class="overlay hidden">
+    <h1 class="title" style="font-size:46px;">TRIAL CONQUERED</h1>
+    <div class="stat-line" id="vicInfo"></div>
+    <div class="row">
+      <button class="rune-btn" id="btnNextDiff">NEXT TRIAL</button>
+      <button class="rune-btn secondary" id="btnStoreFromVictory">STORE</button>
+      <button class="rune-btn secondary" id="btnVicMenu">MAIN MENU</button>
+    </div>
+    <div id="gauntletSubmit" class="hidden" style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:6px;">
+      <input id="gauntletNameInput" maxlength="16" placeholder="Enter your name for the record"
+        style="font-family:inherit;background:#14171f;border:1px solid #3a3f52;color:#e9e4d8;padding:10px 14px;border-radius:4px;font-size:14px;text-align:center;min-width:260px;">
+      <div class="row">
+        <button class="rune-btn" id="btnSubmitScore">SUBMIT TIME</button>
+        <button class="rune-btn secondary" id="btnViewLeaderboardFromVictory">VIEW LEADERBOARD</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD SCREEN -->
+  <div id="leaderboardScreen" class="overlay hidden">
+    <h1 class="title" style="font-size:36px;">ARCANE RECORDS</h1>
+    <div class="subtitle">fastest full gauntlet clears — easy to impossible</div>
+    <div id="leaderboardStatus" class="stat-line"></div>
+    <div id="leaderboardList" class="lb-list"></div>
+    <button class="rune-btn" id="btnLeaderboardBack">BACK</button>
+  </div>
+
+  <div id="instructions" class="hidden">WASD move &nbsp;•&nbsp; mouse aim &nbsp;•&nbsp; hold click to channel &nbsp;•&nbsp; 1-4 switch element</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// ---------- SCREENS ----------
+const screens = {
+  login: document.getElementById('loginScreen'),
+  start: document.getElementById('startScreen'),
+  difficulty: document.getElementById('difficultyScreen'),
+  store: document.getElementById('storeScreen'),
+  levelComplete: document.getElementById('levelCompleteScreen'),
+  gameOver: document.getElementById('gameOverScreen'),
+  victory: document.getElementById('victoryScreen'),
+  leaderboard: document.getElementById('leaderboardScreen'),
+};
+function showScreen(name){
+  Object.values(screens).forEach(s=>s.classList.add('hidden'));
+  if(name && screens[name]) screens[name].classList.remove('hidden');
+  document.getElementById('instructions').classList.toggle('hidden', name!==null);
+}
+
+// ---------- ELEMENTS (storm/lightning hits hardest) ----------
+const ELEMENTS = {
+  fire:  { key:'1', color:'#ff5a2e', damage:20, manaCost:9,  speed:4.3, cooldown:500, radius:6, label:'Fire' },
+  water: { key:'2', color:'#33b1e8', damage:13, manaCost:7,  speed:5,   cooldown:390, radius:5, slow:true, label:'Water' },
+  earth: { key:'3', color:'#a97f43', damage:26, manaCost:15, speed:3,   cooldown:840, radius:9, label:'Earth' },
+  storm: { key:'4', color:'#f4e04d', damage:38, manaCost:19, speed:6.7, cooldown:690, radius:5, pierce:true, label:'Storm' },
+};
+const ELEMENT_ORDER = ['fire','water','earth','storm'];
+const ELEMENT_COST = { fire:0, water:0, earth:90, storm:170 };
+
+// ---------- BOOSTS ----------
+const BOOST_DEFS = {
+  vitality:   { name:'Vitality Crystal',  desc:'+15 Max HP',        baseCost:40, costMult:1.55, amount:15 },
+  arcana:     { name:'Arcane Reservoir',  desc:'+15 Max Mana',      baseCost:40, costMult:1.55, amount:15 },
+  swiftness:  { name:'Swift Boots',       desc:'+0.6 Move Speed',   baseCost:55, costMult:1.6,  amount:0.6, max:6 },
+  power:      { name:'Power Sigil',       desc:'+6% Spell Damage',  baseCost:65, costMult:1.7,  amount:0.06, max:8 },
+  efficiency: { name:'Mana Efficiency',   desc:'-4% Mana Cost',     baseCost:55, costMult:1.65, amount:0.04, max:6 },
+};
+
+// ---------- PERSISTENT PROGRESSION (kept across runs, not across reloads) ----------
+let gold = 0;
+let unlocked = { fire:true, water:true, earth:false, storm:false };
+let boosts = { vitality:0, arcana:0, swiftness:0, power:0, efficiency:0 };
+
+function computeBaseStats(){
+  return {
+    maxHp:    100 + boosts.vitality*BOOST_DEFS.vitality.amount,
+    maxMana:  100 + boosts.arcana*BOOST_DEFS.arcana.amount,
+    speed:    7.3 + boosts.swiftness*BOOST_DEFS.swiftness.amount,
+    dmgMult:  1 + boosts.power*BOOST_DEFS.power.amount,
+    manaCostMult: Math.max(0.55, 1 - boosts.efficiency*BOOST_DEFS.efficiency.amount),
+  };
+}
+
+// ---------- DIFFICULTY CONFIG (more waves) ----------
+const DIFFICULTIES = {
+  easy:      { label:'Easy',       waveCounts:[3,4,4],        enemyHp:38,  enemyDmg:6,  enemySpeed:1.8,  enemyCooldown:3900, pool:['fire','water'],                bossHp:920,  bossDmg:48,  bossName:'Ember Colossus',   bossElement:'fire',  bossCooldown:1800, color:'#6fd66f' },
+  medium:    { label:'Medium',     waveCounts:[4,5,5,6],      enemyHp:58,  enemyDmg:10, enemySpeed:2.5,  enemyCooldown:3000, pool:['fire','water','earth'],        bossHp:1600, bossDmg:64,  bossName:'Frost Sovereign',  bossElement:'water', bossCooldown:1440, color:'#33b1e8' },
+  hard:      { label:'Hard',       waveCounts:[5,6,6,7],      enemyHp:82,  enemyDmg:14, enemySpeed:3.2,  enemyCooldown:2250, pool:['fire','water','earth','storm'], bossHp:2400, bossDmg:88,  bossName:'Storm Titan',      bossElement:'storm', bossCooldown:960,  color:'#f0a03a' },
+  impossible:{ label:'Impossible', waveCounts:[6,7,7,8,9],    enemyHp:115, enemyDmg:20, enemySpeed:4,    enemyCooldown:1650, pool:['fire','water','earth','storm'], bossHp:3800, bossDmg:120, bossName:'Chaos Earthwarden', bossElement:'earth', bossCooldown:660,  color:'#f04d8a' },
+};
+const DIFF_ORDER = ['easy','medium','hard','impossible'];
+
+// ---------- BACKGROUND THEMES PER DIFFICULTY ----------
+const BG_THEMES = {
+  menu:       { top:'#171a24', bottom:'#0b0d14', accent:'rgba(232,193,90,0.06)' },
+  easy:       { top:'#12321a', bottom:'#050f08', accent:'rgba(111,214,111,0.10)' },
+  medium:     { top:'#0d2536', bottom:'#040a12', accent:'rgba(51,177,232,0.11)' },
+  hard:       { top:'#331a0d', bottom:'#150802', accent:'rgba(240,160,58,0.12)' },
+  impossible: { top:'#2b0f30', bottom:'#100513', accent:'rgba(240,77,138,0.13)' },
+};
+
+// ---------- GLOBAL RUN STATE ----------
+let keys = {};
+let mouse = { x: W/2, y: H/2, down:false };
+let gameState = 'menu';
+let difficultyKey = null;
+let levelIndex = 0;
+let player, enemies, playerProjectiles, enemyProjectiles, pickups, particles, damageNumbers;
+let lastTime = 0;
+let rafId = null;
+let levelUpBanner = 0;
+let spawnTimer = 0;
+let bossActive = false;
+let boss = null;
+let storeReturnTo = 'start';
+let shakeMag = 0, shakeTime = 0;
+let introTimer = 0, introStart = 60, introText = '', pendingSpawn = null;
+let gauntletMode = false, gauntletElapsed = 0;
+const LEADERBOARD_KEY = 'gauntlet_leaderboard';
+
+function formatTime(ms){
+  const totalSec = ms/1000;
+  const m = Math.floor(totalSec/60);
+  const s = (totalSec - m*60).toFixed(2);
+  return `${m}:${s.padStart(5,'0')}`;
+}
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+function triggerShake(mag, dur){
+  shakeMag = Math.max(shakeMag, mag);
+  shakeTime = Math.max(shakeTime, dur);
+}
+
+function freshPlayer(){
+  const s = computeBaseStats();
+  return {
+    x: W/2, y: H-90, radius:16,
+    hp:s.maxHp, maxHp:s.maxHp, mana:s.maxMana, maxMana:s.maxMana,
+    level:1, xp:0, xpNext:60,
+    projectiles:1,
+    element:'fire',
+    angle:0,
+    speed:s.speed,
+    dmgMult:s.dmgMult,
+    manaCostMult:s.manaCostMult,
+    lastShot:0,
+    invuln:0,
+  };
+}
+
+function refreshPlayerLive(){
+  if(!player) return;
+  const s = computeBaseStats();
+  const hpDelta = s.maxHp - player.maxHp;
+  const mpDelta = s.maxMana - player.maxMana;
+  player.maxHp = s.maxHp;
+  player.hp = clamp(player.hp + Math.max(0,hpDelta), 0, player.maxHp);
+  player.maxMana = s.maxMana;
+  player.mana = clamp(player.mana + Math.max(0,mpDelta), 0, player.maxMana);
+  player.speed = s.speed;
+  player.dmgMult = s.dmgMult;
+  player.manaCostMult = s.manaCostMult;
+}
+
+function resetRunState(){
+  player = freshPlayer();
+  levelIndex = 0;
+  enemies = [];
+  playerProjectiles = [];
+  enemyProjectiles = [];
+  pickups = [];
+  particles = [];
+  damageNumbers = [];
+  bossActive = false;
+  boss = null;
+  spawnTimer = 0;
+  gauntletMode = false;
+  gauntletElapsed = 0;
+}
+
+// ---------- INPUT ----------
+window.addEventListener('keydown', e=>{
+  keys[e.key.toLowerCase()] = true;
+  for(const el of ELEMENT_ORDER){
+    if(ELEMENTS[el].key === e.key && unlocked[el] && player) player.element = el;
+  }
+});
+window.addEventListener('keyup', e=>{ keys[e.key.toLowerCase()] = false; });
+canvas.addEventListener('mousemove', e=>{
+  const r = canvas.getBoundingClientRect();
+  mouse.x = (e.clientX - r.left) * (canvas.width / r.width);
+  mouse.y = (e.clientY - r.top) * (canvas.height / r.height);
+});
+canvas.addEventListener('mousedown', ()=>{ mouse.down = true; });
+window.addEventListener('mouseup', ()=>{ mouse.down = false; });
+
+// ---------- UTIL ----------
+function dist(ax,ay,bx,by){ return Math.hypot(ax-bx, ay-by); }
+function rand(a,b){ return a + Math.random()*(b-a); }
+function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
+
+function shade(hex, pct){
+  const num = parseInt(hex.slice(1),16);
+  let r=(num>>16)+Math.round(255*pct);
+  let g=((num>>8)&0xff)+Math.round(255*pct);
+  let b=(num&0xff)+Math.round(255*pct);
+  r=clamp(r,0,255); g=clamp(g,0,255); b=clamp(b,0,255);
+  return `rgb(${r},${g},${b})`;
+}
+
+function spawnParticles(x,y,color,n=8){
+  for(let i=0;i<n;i++){
+    particles.push({ x,y, vx: rand(-4.5,4.5), vy: rand(-4.5,4.5), life: rand(12,22), maxLife: 22, color });
+  }
+}
+function spawnDamageNumber(x,y,value,color,crit){
+  damageNumbers.push({ x, y:y-14, value:Math.round(value), color, life:32, maxLife:32, crit:!!crit, drift: rand(-0.4,0.4) });
+}
+
+// ---------- LOGIN: Google Sign-In (real OAuth) + guest fallback ----------
+// To enable real "Sign in with Google": create an OAuth 2.0 Client ID in the
+// Google Cloud Console (APIs & Services > Credentials), add the exact domain
+// this file is hosted on under "Authorized JavaScript origins", then paste
+// the client ID below. It will NOT work inside a sandboxed preview with no
+// fixed domain — it only works once you host this file yourself.
+const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com';
+
+let currentUser = null;        // storage identity key (email for Google, typed name for guest)
+let currentDisplayName = null; // shown in UI and prefilled on the leaderboard
+
+async function loadProfile(key){
+  if(typeof window.storage === 'undefined') return null;
+  try{
+    const res = await window.storage.get('profile_'+key, false);
+    return res ? JSON.parse(res.value) : null;
+  }catch(e){ return null; }
+}
+async function saveProfile(){
+  if(!currentUser || typeof window.storage === 'undefined') return;
+  try{
+    await window.storage.set('profile_'+currentUser, JSON.stringify({ gold, unlocked, boosts, displayName: currentDisplayName }), false);
+  }catch(e){ /* ignore — progress just won't persist this checkpoint */ }
+}
+
+async function loginAs(identityKey, displayName, provider){
+  currentUser = identityKey;
+  currentDisplayName = displayName || identityKey;
+  if(typeof window.storage !== 'undefined'){
+    try{
+      await window.storage.set('username', identityKey, false);
+      await window.storage.set('login_provider', provider || 'guest', false);
+    }catch(e){}
+  }
+  const profile = await loadProfile(identityKey);
+  if(profile){
+    gold = profile.gold || 0;
+    unlocked = Object.assign({ fire:true, water:true, earth:false, storm:false }, profile.unlocked || {});
+    boosts = Object.assign({ vitality:0, arcana:0, swiftness:0, power:0, efficiency:0 }, profile.boosts || {});
+    if(profile.displayName) currentDisplayName = profile.displayName;
+  }
+  document.getElementById('welcomeUser').textContent =
+    'Logged in as ' + currentDisplayName + (provider==='google' ? ' (Google)' : '');
+  showScreen('start');
+}
+
+function isValidName(name){
+  return name.length>=2 && name.length<=16 && /^[A-Za-z0-9 _-]+$/.test(name);
+}
+
+async function initLogin(){
+  let uname = null, provider = 'guest';
+  if(typeof window.storage !== 'undefined'){
+    try{
+      const res = await window.storage.get('username', false);
+      uname = res ? res.value : null;
+      const p = await window.storage.get('login_provider', false);
+      provider = p ? p.value : 'guest';
+    }catch(e){ uname = null; }
+  }
+  if(uname){ await loginAs(uname, null, provider); }
+  else{ showScreen('login'); }
+}
+
+// decode a Google ID token payload client-side (for display only — this is
+// NOT signature-verified, which is fine for a display name/leaderboard but
+// would need server-side verification for any real security-sensitive use).
+function decodeJwtPayload(token){
+  const base64Url = token.split('.')[1];
+  const base64 = base64Url.replace(/-/g,'+').replace(/_/g,'/');
+  const json = decodeURIComponent(atob(base64).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+  return JSON.parse(json);
+}
+
+function handleGoogleCredential(response){
+  try{
+    const payload = decodeJwtPayload(response.credential);
+    const email = payload.email;
+    const name = payload.name || email;
+    loginAs(email, name, 'google');
+  }catch(e){
+    document.getElementById('loginError').textContent = 'Could not read the Google sign-in response.';
+  }
+}
+
+function initGoogleSignIn(){
+  const status = document.getElementById('googleSignInStatus');
+  if(typeof google === 'undefined' || !google.accounts || !google.accounts.id){
+    status.textContent = 'Google Sign-In script did not load (offline, or blocked) — use guest mode below.';
+    return;
+  }
+  if(GOOGLE_CLIENT_ID.indexOf('YOUR_GOOGLE_OAUTH_CLIENT_ID') === 0){
+    status.textContent = 'Google Sign-In is not configured for this copy of the game — use guest mode below.';
+    return;
+  }
+  try{
+    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleCredential });
+    google.accounts.id.renderButton(document.getElementById('googleSignInDiv'), { theme:'outline', size:'large', width:260 });
+    status.textContent = '';
+  }catch(e){
+    status.textContent = 'Google Sign-In failed to initialize — use guest mode below.';
+  }
+}
+
+// ---------- ONLINE LEADERBOARD (shared artifact storage, with local fallback) ----------
+let localLeaderboardFallback = [];
+let leaderboardIsLocal = false;
+
+async function loadLeaderboard(){
+  if(typeof window.storage === 'undefined'){
+    leaderboardIsLocal = true;
+    return localLeaderboardFallback.slice();
+  }
+  try{
+    const res = await window.storage.get(LEADERBOARD_KEY, true);
+    leaderboardIsLocal = false;
+    return res ? JSON.parse(res.value) : [];
+  }catch(e){
+    leaderboardIsLocal = false;
+    return [];
+  }
+}
+async function saveLeaderboard(list){
+  if(typeof window.storage === 'undefined'){
+    localLeaderboardFallback = list;
+    return;
+  }
+  try{ await window.storage.set(LEADERBOARD_KEY, JSON.stringify(list), true); }
+  catch(e){ /* ignore — leaderboard just won't persist this entry */ }
+}
+async function submitScore(name, timeMs){
+  let list = await loadLeaderboard();
+  list.push({ name, timeMs, date: Date.now() });
+  list.sort((a,b)=>a.timeMs-b.timeMs);
+  list = list.slice(0,50);
+  await saveLeaderboard(list);
+  return list;
+}
+async function renderLeaderboard(){
+  const wrap = document.getElementById('leaderboardList');
+  const status = document.getElementById('leaderboardStatus');
+  wrap.innerHTML = '<p class="stat-line">Loading records…</p>';
+  const list = await loadLeaderboard();
+  status.textContent = leaderboardIsLocal
+    ? 'Online records unavailable in this preview — showing local session records only.'
+    : '';
+  wrap.innerHTML = '';
+  if(list.length===0){
+    wrap.innerHTML = '<p class="stat-line">No records yet — be the first to complete the Full Gauntlet!</p>';
+    return;
+  }
+  list.slice(0,20).forEach((entry,i)=>{
+    const row = document.createElement('div');
+    row.className = 'lb-row' + (i===0 ? ' lb-top1' : '');
+    row.innerHTML = `<span class="lb-rank">#${i+1}</span><span class="lb-name">${escapeHtml(entry.name)}</span><span class="lb-time">${formatTime(entry.timeMs)}</span>`;
+    wrap.appendChild(row);
+  });
+}
+function openLeaderboardScreen(){
+  showScreen('leaderboard');
+  renderLeaderboard();
+}
+
+// ---------- FLAT GLOWING CIRCLE RENDER HELPER ----------
+function drawSphere(x,y,radius,colorHex){
+  ctx.save();
+  ctx.shadowColor = colorHex; ctx.shadowBlur = 14;
+  ctx.fillStyle = colorHex;
+  ctx.beginPath(); ctx.arc(x,y,radius,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// ---------- ENEMY / BOSS FACTORY ----------
+function spawnWave(){
+  const cfg = DIFFICULTIES[difficultyKey];
+  const count = cfg.waveCounts[levelIndex];
+  const hpScale = 1 + levelIndex*0.16;
+  for(let i=0;i<count;i++){
+    const side = Math.floor(rand(0,4));
+    let x,y;
+    if(side===0){ x=rand(40,W-40); y=-30; }
+    else if(side===1){ x=rand(40,W-40); y=H+30; }
+    else if(side===2){ x=-30; y=rand(40,H-200); }
+    else { x=W+30; y=rand(40,H-200); }
+    const element = cfg.pool[Math.floor(rand(0,cfg.pool.length))];
+    const isElite = Math.random() < 0.25;
+    const mult = isElite ? 4 : 1;
+    enemies.push({
+      x,y, radius: isElite ? 22 : 16,
+      hp: cfg.enemyHp*hpScale*mult, maxHp: cfg.enemyHp*hpScale*mult,
+      dmg: cfg.enemyDmg*mult, speed: cfg.enemySpeed,
+      element, lastShot: rand(0,cfg.enemyCooldown),
+      cooldown: cfg.enemyCooldown, xpValue: (22 + levelIndex*4) * (isElite?3:1),
+      isBoss:false, isElite
+    });
+  }
+}
+
+function spawnBoss(){
+  const cfg = DIFFICULTIES[difficultyKey];
+  boss = {
+    x: W/2, y: 150, radius:44,
+    hp: cfg.bossHp, maxHp: cfg.bossHp,
+    dmg: cfg.bossDmg, speed: cfg.enemySpeed*0.7,
+    element: cfg.bossElement,
+    lastShot:0, cooldown: cfg.bossCooldown,
+    name: cfg.bossName, isBoss:true,
+    phaseTimer:0, moveDir:1,
+  };
+  bossActive = true;
+}
+
+function isNormalLevelCount(){ return DIFFICULTIES[difficultyKey].waveCounts.length; }
+function isBossLevel(){ return levelIndex >= isNormalLevelCount(); }
+
+function startLevel(){
+  enemies = [];
+  playerProjectiles = [];
+  enemyProjectiles = [];
+  bossActive = false; boss = null;
+  const cfg = DIFFICULTIES[difficultyKey];
+  if(isBossLevel()){
+    introText = cfg.bossName.toUpperCase() + ' AWAKENS';
+    introTimer = 95; introStart = 95;
+    pendingSpawn = 'boss';
+  } else {
+    introText = cfg.label.toUpperCase() + (gauntletMode && levelIndex===0 ? ' TRIAL BEGINS' : ' — WAVE ' + (levelIndex+1) + ' APPROACHES');
+    introTimer = 60; introStart = 60;
+    pendingSpawn = 'wave';
+  }
+}
+
+// ---------- SHOOTING ----------
+function playerShoot(now){
+  const ed = ELEMENTS[player.element];
+  if(now - player.lastShot < ed.cooldown) return;
+  const cost = ed.manaCost * player.manaCostMult;
+  if(player.mana < cost) return;
+  player.mana -= cost;
+  player.lastShot = now;
+  const n = player.projectiles;
+  const totalSpread = Math.min(0.55, 0.11*(n-1));
+  for(let i=0;i<n;i++){
+    const t = n===1 ? 0 : (i/(n-1) - 0.5);
+    const angle = player.angle + t*totalSpread;
+    playerProjectiles.push({
+      x: player.x + Math.cos(player.angle)*20,
+      y: player.y + Math.sin(player.angle)*20,
+      vx: Math.cos(angle)*ed.speed, vy: Math.sin(angle)*ed.speed,
+      element: player.element, radius: ed.radius, damage: ed.damage*player.dmgMult,
+      pierce: !!ed.pierce, life: 90
+    });
+  }
+}
+
+function enemyShoot(e, now, targetX, targetY){
+  const ed = ELEMENTS[e.element];
+  const ang = Math.atan2(targetY - e.y, targetX - e.x);
+  enemyProjectiles.push({
+    x: e.x, y: e.y,
+    vx: Math.cos(ang)*ed.speed*0.72, vy: Math.sin(ang)*ed.speed*0.72,
+    element: e.element, radius: ed.radius+1, damage: e.dmg, life: 160
+  });
+}
+
+function bossShoot(now){
+  const ed = ELEMENTS[boss.element];
+  const baseAngle = Math.atan2(player.y-boss.y, player.x-boss.x);
+  const shots = difficultyKey==='impossible'?5: difficultyKey==='hard'?4:3;
+  for(let i=0;i<shots;i++){
+    const t = shots===1?0:(i/(shots-1)-0.5);
+    const angle = baseAngle + t*0.9;
+    enemyProjectiles.push({
+      x: boss.x, y: boss.y,
+      vx: Math.cos(angle)*ed.speed*0.65, vy: Math.sin(angle)*ed.speed*0.65,
+      element: boss.element, radius: ed.radius+3, damage: boss.dmg, life: 200
+    });
+  }
+}
+
+// ---------- PICKUPS ----------
+function maybeDropPickup(x,y){
+  if(Math.random() < 0.4){
+    pickups.push({ x,y, radius:10, type: Math.random()<0.5 ? 'mana':'health', life: 600 });
+  }
+}
+function spawnFieldCrystal(){
+  pickups.push({ x: rand(60,W-60), y: rand(60,H-140), radius:10, type: Math.random()<0.5?'mana':'health', life:500 });
+}
+
+// ---------- LEVEL UP ----------
+function grantXp(amount){
+  player.xp += amount;
+  while(player.xp >= player.xpNext){
+    player.xp -= player.xpNext;
+    player.level++;
+    player.projectiles = Math.min(10, player.projectiles+1);
+    player.maxHp += 8; player.maxMana += 8;
+    player.hp = player.maxHp; player.mana = player.maxMana;
+    player.xpNext = Math.floor(player.xpNext*1.35);
+    levelUpBanner = 75;
+  }
+}
+
+// ---------- UPDATE ----------
+function update(dt, now){
+  if(gauntletMode) gauntletElapsed += dt;
+  if(shakeTime>0) shakeTime--; else shakeMag = 0;
+
+  if(introTimer>0){
+    introTimer--;
+    if(introTimer<=0){
+      if(pendingSpawn==='boss') spawnBoss(); else spawnWave();
+      pendingSpawn = null;
+    }
+    return;
+  }
+
+  let dx=0, dy=0;
+  if(keys['w']||keys['arrowup']) dy -= 1;
+  if(keys['s']||keys['arrowdown']) dy += 1;
+  if(keys['a']||keys['arrowleft']) dx -= 1;
+  if(keys['d']||keys['arrowright']) dx += 1;
+  if(dx||dy){
+    const m = Math.hypot(dx,dy);
+    player.x = clamp(player.x + (dx/m)*player.speed, player.radius, W-player.radius);
+    player.y = clamp(player.y + (dy/m)*player.speed, player.radius, H-player.radius);
+  }
+  player.angle = Math.atan2(mouse.y-player.y, mouse.x-player.x);
+  player.mana = clamp(player.mana + 0.06, 0, player.maxMana);
+  if(mouse.down) playerShoot(now);
+
+  // player projectiles
+  for(let i=playerProjectiles.length-1;i>=0;i--){
+    const p = playerProjectiles[i];
+    p.x+=p.vx; p.y+=p.vy; p.life--;
+    if(p.life<=0 || p.x<-20||p.x>W+20||p.y<-20||p.y>H+20){ playerProjectiles.splice(i,1); continue; }
+    let hit = false;
+    for(let j=enemies.length-1;j>=0;j--){
+      const e = enemies[j];
+      if(dist(p.x,p.y,e.x,e.y) < p.radius+e.radius){
+        e.hp -= p.damage;
+        spawnDamageNumber(e.x, e.y-e.radius, p.damage, ELEMENTS[p.element].color);
+        spawnParticles(p.x,p.y, ELEMENTS[p.element].color, 5);
+        hit = true;
+        if(e.hp<=0){
+          spawnParticles(e.x,e.y, ELEMENTS[e.element].color, e.isElite?26:16);
+          maybeDropPickup(e.x,e.y);
+          grantXp(e.xpValue);
+          gold += e.isElite ? 12 : 3;
+          enemies.splice(j,1);
+        }
+        if(!p.pierce) break;
+      }
+    }
+    if(!hit && boss){
+      if(dist(p.x,p.y,boss.x,boss.y) < p.radius+boss.radius){
+        boss.hp -= p.damage;
+        spawnDamageNumber(boss.x, boss.y-boss.radius, p.damage, ELEMENTS[p.element].color, true);
+        spawnParticles(p.x,p.y, ELEMENTS[p.element].color, 5);
+        hit = true;
+        if(boss.hp<=0){
+          spawnParticles(boss.x,boss.y,ELEMENTS[boss.element].color,40);
+          grantXp(300);
+          gold += 120;
+          boss = null; bossActive = false;
+          triggerShake(14, 26);
+        }
+      }
+    }
+    if(hit && !p.pierce){ playerProjectiles.splice(i,1); }
+  }
+
+  // enemy AI
+  for(const e of enemies){
+    const ang = Math.atan2(player.y-e.y, player.x-e.x);
+    const d = dist(e.x,e.y,player.x,player.y);
+    if(d > 190){ e.x += Math.cos(ang)*e.speed; e.y += Math.sin(ang)*e.speed; }
+    else if(d < 130){ e.x -= Math.cos(ang)*e.speed*0.6; e.y -= Math.sin(ang)*e.speed*0.6; }
+    e.x = clamp(e.x, e.radius, W-e.radius);
+    e.y = clamp(e.y, e.radius, H-e.radius);
+    if(now - e.lastShot > e.cooldown){ e.lastShot = now; enemyShoot(e, now, player.x, player.y); }
+    if(d < e.radius+player.radius && player.invuln<=0){
+      const dmg = e.dmg*0.4;
+      player.hp -= dmg;
+      spawnDamageNumber(player.x, player.y-player.radius, dmg, '#ff5c5c');
+      player.invuln = 30;
+      spawnParticles(player.x,player.y,'#ff3333',10);
+      triggerShake(4, 8);
+    }
+  }
+
+  // boss AI
+  if(boss){
+    boss.phaseTimer++;
+    boss.x += Math.sin(boss.phaseTimer*0.02)*1.6*boss.moveDir;
+    boss.y = 150 + Math.sin(boss.phaseTimer*0.015)*30;
+    boss.x = clamp(boss.x, boss.radius, W-boss.radius);
+    if(now - boss.lastShot > boss.cooldown){ boss.lastShot = now; bossShoot(now); }
+    const d = dist(boss.x,boss.y,player.x,player.y);
+    if(d < boss.radius+player.radius && player.invuln<=0){
+      const dmg = boss.dmg*0.5;
+      player.hp -= dmg;
+      spawnDamageNumber(player.x, player.y-player.radius, dmg, '#ff5c5c');
+      player.invuln = 30;
+      triggerShake(5, 10);
+    }
+  }
+
+  // enemy projectiles
+  for(let i=enemyProjectiles.length-1;i>=0;i--){
+    const p = enemyProjectiles[i];
+    p.x+=p.vx; p.y+=p.vy; p.life--;
+    if(p.life<=0 || p.x<-20||p.x>W+20||p.y<-20||p.y>H+20){ enemyProjectiles.splice(i,1); continue; }
+    if(dist(p.x,p.y,player.x,player.y) < p.radius+player.radius && player.invuln<=0){
+      player.hp -= p.damage;
+      spawnDamageNumber(player.x, player.y-player.radius, p.damage, ELEMENTS[p.element].color);
+      player.invuln = 24;
+      spawnParticles(player.x,player.y, ELEMENTS[p.element].color, 10);
+      enemyProjectiles.splice(i,1);
+      triggerShake(3, 6);
+    }
+  }
+  if(player.invuln>0) player.invuln--;
+
+  // pickups
+  for(let i=pickups.length-1;i>=0;i--){
+    const c = pickups[i];
+    c.life--;
+    if(c.life<=0){ pickups.splice(i,1); continue; }
+    if(dist(c.x,c.y,player.x,player.y) < c.radius+player.radius){
+      if(c.type==='mana') player.mana = clamp(player.mana+28, 0, player.maxMana);
+      else player.hp = clamp(player.hp+22, 0, player.maxHp);
+      spawnParticles(c.x,c.y, c.type==='mana'?'#3aa0e8':'#e8483a', 12);
+      pickups.splice(i,1);
+    }
+  }
+  spawnTimer++;
+  if(spawnTimer > 260 && pickups.length < 4){ spawnTimer = 0; spawnFieldCrystal(); }
+
+  // particles
+  for(let i=particles.length-1;i>=0;i--){
+    const pt = particles[i];
+    pt.x+=pt.vx; pt.y+=pt.vy; pt.life--;
+    if(pt.life<=0) particles.splice(i,1);
+  }
+  // damage numbers
+  for(let i=damageNumbers.length-1;i>=0;i--){
+    const d = damageNumbers[i];
+    d.y -= 1.8; d.x += d.drift; d.life--;
+    if(d.life<=0) damageNumbers.splice(i,1);
+  }
+
+  if(levelUpBanner>0) levelUpBanner--;
+
+  if(player.hp<=0){ endGame(); return; }
+  if(!isBossLevel() && enemies.length===0){ onLevelClear(); }
+  else if(isBossLevel() && boss===null && !bossActive){ onVictory(); }
+}
+
+function onLevelClear(){
+  levelIndex++;
+  player.hp = clamp(player.hp + player.maxHp*0.35, 0, player.maxHp);
+  player.mana = player.maxMana;
+  gold += 15 + levelIndex*5;
+  saveProfile();
+
+  if(gauntletMode){
+    startLevel();
+    return;
+  }
+
+  gameState = 'paused';
+  document.getElementById('lcInfo').innerHTML =
+    `Mage Level ${player.level} &nbsp;•&nbsp; ${player.projectiles} projectile${player.projectiles>1?'s':''} &nbsp;•&nbsp; Gold: ${gold} &nbsp;•&nbsp; Next: ${isBossLevel() ? 'FINAL BOSS' : 'Wave ' + (levelIndex+1)}`;
+  showScreen('levelComplete');
+  cancelAnimationFrame(rafId);
+}
+
+function onVictory(){
+  const cfg = DIFFICULTIES[difficultyKey];
+  gold += 150;
+  saveProfile();
+
+  if(gauntletMode){
+    const idx = DIFF_ORDER.indexOf(difficultyKey);
+    if(idx < DIFF_ORDER.length-1){
+      // seamlessly advance into the next trial, timer keeps running
+      difficultyKey = DIFF_ORDER[idx+1];
+      levelIndex = 0;
+      player.hp = player.maxHp;
+      player.mana = player.maxMana;
+      startLevel();
+      return;
+    } else {
+      // Impossible boss down — the Gauntlet is complete!
+      gameState = 'paused';
+      gauntletMode = false;
+      document.getElementById('vicInfo').innerHTML =
+        `GAUNTLET COMPLETE!<br>Total time: <b>${formatTime(gauntletElapsed)}</b><br>Mage Level ${player.level} &nbsp;•&nbsp; ${player.projectiles} projectiles`;
+      document.getElementById('btnNextDiff').classList.add('hidden');
+      document.getElementById('gauntletSubmit').classList.remove('hidden');
+      document.getElementById('gauntletNameInput').value = currentDisplayName || '';
+      showScreen('victory');
+      cancelAnimationFrame(rafId);
+      return;
+    }
+  }
+
+  gameState = 'paused';
+  document.getElementById('vicInfo').innerHTML =
+    `You defeated the <b>${cfg.bossName}</b> on ${cfg.label}!<br>Mage Level ${player.level} &nbsp;•&nbsp; ${player.projectiles} projectiles &nbsp;•&nbsp; Gold: ${gold}`;
+  document.getElementById('gauntletSubmit').classList.add('hidden');
+  const idx = DIFF_ORDER.indexOf(difficultyKey);
+  const nextBtn = document.getElementById('btnNextDiff');
+  if(idx < DIFF_ORDER.length-1){
+    nextBtn.classList.remove('hidden');
+    nextBtn.textContent = 'NEXT TRIAL: ' + DIFFICULTIES[DIFF_ORDER[idx+1]].label.toUpperCase();
+  } else {
+    nextBtn.classList.add('hidden');
+  }
+  showScreen('victory');
+  cancelAnimationFrame(rafId);
+}
+
+function endGame(){
+  gameState = 'paused';
+  gauntletMode = false;
+  saveProfile();
+  document.getElementById('goLevel').textContent =
+    (isBossLevel() ? 'Boss — ' : 'Wave ' + (levelIndex+1) + ' — ') + DIFFICULTIES[difficultyKey].label;
+  document.getElementById('goPlayerLevel').textContent = player.level;
+  showScreen('gameOver');
+  cancelAnimationFrame(rafId);
+}
+
+// ---------- RENDER ----------
+function drawBar(x,y,w,h,pct,colorBg,colorFg,label){
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(x-2,y-2,w+4,h+4);
+  ctx.fillStyle = colorBg;
+  ctx.fillRect(x,y,w,h);
+  ctx.fillStyle = colorFg;
+  ctx.fillRect(x,y,w*clamp(pct,0,1),h);
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.strokeRect(x,y,w,h);
+  if(label){
+    ctx.fillStyle = '#e9e4d8';
+    ctx.font = '11px Georgia';
+    ctx.textAlign = 'left';
+    ctx.fillText(label, x+4, y+h-3);
+  }
+}
+
+function drawBackground(){
+  ctx.fillStyle = '#0d1018';
+  ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  for(let gx=0; gx<W; gx+=50){ ctx.beginPath(); ctx.moveTo(gx,0); ctx.lineTo(gx,H); ctx.stroke(); }
+  for(let gy=0; gy<H; gy+=50){ ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(W,gy); ctx.stroke(); }
+}
+
+function render(){
+  ctx.clearRect(0,0,W,H);
+  drawBackground();
+  if(!player) return;
+
+  ctx.save();
+  if(shakeTime>0){
+    ctx.translate(rand(-shakeMag,shakeMag), rand(-shakeMag,shakeMag));
+  }
+
+  for(const c of pickups){
+    const col = c.type==='mana' ? '#3aa0e8' : '#e8483a';
+    ctx.save();
+    ctx.shadowColor = col; ctx.shadowBlur = 14;
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y-c.radius);
+    ctx.lineTo(c.x+c.radius*0.8, c.y);
+    ctx.lineTo(c.x, c.y+c.radius);
+    ctx.lineTo(c.x-c.radius*0.8, c.y);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  for(const pt of particles){
+    ctx.globalAlpha = pt.life/pt.maxLife;
+    ctx.fillStyle = pt.color;
+    ctx.beginPath(); ctx.arc(pt.x,pt.y,2.4,0,7); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  for(const e of enemies){
+    drawSphere(e.x, e.y, e.radius, ELEMENTS[e.element].color);
+    if(e.isElite){
+      ctx.save();
+      ctx.strokeStyle = '#e8c15a';
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = '#e8c15a'; ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.radius+4, 0, 7); ctx.stroke();
+      ctx.restore();
+      ctx.lineWidth = 1;
+    }
+    ctx.fillStyle = '#1a1c24';
+    ctx.fillRect(e.x-18, e.y-e.radius-14, 36, 5);
+    ctx.fillStyle = ELEMENTS[e.element].color;
+    ctx.fillRect(e.x-18, e.y-e.radius-14, 36*clamp(e.hp/e.maxHp,0,1), 5);
+  }
+
+  if(boss){
+    drawSphere(boss.x, boss.y, boss.radius, ELEMENTS[boss.element].color);
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.arc(boss.x,boss.y,boss.radius,0,7); ctx.stroke();
+    ctx.lineWidth=1;
+  }
+
+  for(const p of playerProjectiles) drawSphere(p.x, p.y, p.radius, ELEMENTS[p.element].color);
+  for(const p of enemyProjectiles){
+    ctx.globalAlpha = 0.9;
+    drawSphere(p.x, p.y, p.radius, ELEMENTS[p.element].color);
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.save();
+  if(player.invuln>0 && Math.floor(player.invuln/4)%2===0) ctx.globalAlpha = 0.4;
+  drawSphere(player.x, player.y, player.radius, '#e9e4d8');
+  const pcol = ELEMENTS[player.element].color;
+  ctx.strokeStyle = pcol; ctx.lineWidth = 3; ctx.shadowColor=pcol; ctx.shadowBlur=10;
+  ctx.beginPath(); ctx.arc(player.x,player.y,player.radius+4,0,7); ctx.stroke();
+  ctx.lineWidth = 1;
+  ctx.restore();
+
+  ctx.strokeStyle = ELEMENTS[player.element].color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(player.x + Math.cos(player.angle)*20, player.y + Math.sin(player.angle)*20);
+  ctx.lineTo(player.x + Math.cos(player.angle)*40, player.y + Math.sin(player.angle)*40);
+  ctx.stroke();
+  ctx.lineWidth = 1;
+
+  // damage numbers on top
+  for(const d of damageNumbers){
+    ctx.globalAlpha = clamp(d.life/d.maxLife, 0, 1);
+    ctx.fillStyle = d.color;
+    ctx.font = (d.crit ? 'bold 19px Georgia' : 'bold 14px Georgia');
+    ctx.textAlign = 'center';
+    ctx.fillText(d.value, d.x, d.y);
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore(); // end screen-shake translate
+
+  // ---- HUD ----
+  drawBar(20,20,220,18, player.hp/player.maxHp, '#3a1a1a', '#e8483a', `HP ${Math.ceil(player.hp)}/${player.maxHp}`);
+  drawBar(20,44,220,14, player.mana/player.maxMana, '#1a2a3a', '#3aa0e8', `MP ${Math.ceil(player.mana)}/${player.maxMana}`);
+  drawBar(20,64,220,8, player.xp/player.xpNext, '#2a2416', '#c99a3a', null);
+
+  ctx.fillStyle = '#e9e4d8';
+  ctx.font = '13px Georgia';
+  ctx.textAlign = 'left';
+  ctx.fillText(`Mage Lv.${player.level}  •  Bolts x${player.projectiles}`, 20, 90);
+  ctx.fillText(`${DIFFICULTIES[difficultyKey].label}  •  ${isBossLevel() ? 'FINAL BOSS' : 'Wave ' + (levelIndex+1) + '/' + isNormalLevelCount()}`, 20, 108);
+
+  ctx.fillStyle = '#e8c15a';
+  ctx.textAlign = 'right';
+  ctx.font = '15px Georgia';
+  ctx.fillText(`Gold: ${gold}`, W-20, 34);
+  ctx.textAlign = 'left';
+
+  if(gauntletMode){
+    ctx.fillStyle = '#e9e4d8';
+    ctx.font = 'bold 16px Georgia';
+    ctx.textAlign = 'center';
+    ctx.fillText(`GAUNTLET  •  ⏱ ${formatTime(gauntletElapsed)}`, W/2, 118);
+    ctx.textAlign = 'left';
+  }
+
+  let ex = W-190;
+  for(const el of ELEMENT_ORDER){
+    const active = player.element===el;
+    const owned = unlocked[el];
+    ctx.save();
+    if(active){ ctx.shadowColor = ELEMENTS[el].color; ctx.shadowBlur = 14; }
+    ctx.fillStyle = owned ? ELEMENTS[el].color : '#3a3d48';
+    ctx.globalAlpha = owned ? (active ? 1 : 0.4) : 0.5;
+    ctx.beginPath(); ctx.arc(ex, 56, active?13:10, 0, 7); ctx.fill();
+    ctx.restore();
+    if(!owned){
+      ctx.fillStyle = '#0b0d14';
+      ctx.font = '10px Georgia';
+      ctx.textAlign = 'center';
+      ctx.fillText('X', ex, 59);
+    }
+    ctx.fillStyle = active ? '#e9e4d8' : '#5c5f6e';
+    ctx.font = '10px Georgia';
+    ctx.textAlign = 'center';
+    ctx.fillText(ELEMENTS[el].key, ex, 82);
+    ex += 44;
+  }
+
+  if(boss){
+    const bw = 480;
+    drawBar(W/2-bw/2, 20, bw, 20, boss.hp/boss.maxHp, '#2a1414', ELEMENTS[boss.element].color, null);
+    ctx.fillStyle = '#e9e4d8';
+    ctx.font = '15px Georgia';
+    ctx.textAlign = 'center';
+    ctx.fillText(boss.name.toUpperCase(), W/2, 16);
+  }
+
+  if(levelUpBanner>0){
+    ctx.save();
+    ctx.globalAlpha = clamp(levelUpBanner/75, 0, 1);
+    ctx.fillStyle = '#e8c15a';
+    ctx.font = 'bold 40px Georgia';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = '#e8c15a'; ctx.shadowBlur = 20;
+    ctx.fillText('LEVEL UP!', W/2, H/2 - 120);
+    ctx.font = '16px Georgia';
+    ctx.fillText(`+1 projectile  •  now firing ${player.projectiles}`, W/2, H/2-88);
+    ctx.restore();
+  }
+
+  // tense low-HP vignette pulse
+  if(player.hp/player.maxHp < 0.3){
+    const t = performance.now()*0.006;
+    const pulse = (Math.sin(t)+1)/2;
+    ctx.save();
+    const vg = ctx.createRadialGradient(W/2,H/2,H*0.22,W/2,H/2,H*0.72);
+    vg.addColorStop(0,'rgba(180,0,0,0)');
+    vg.addColorStop(1, `rgba(180,0,0,${0.28+0.3*pulse})`);
+    ctx.fillStyle = vg;
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  }
+
+  // dramatic wave / boss intro
+  if(introTimer>0){
+    const fadeIn = clamp((introStart-introTimer)/12, 0, 1);
+    const fadeOut = introTimer<12 ? clamp(introTimer/12,0,1) : 1;
+    ctx.save();
+    ctx.globalAlpha = fadeIn * fadeOut;
+    ctx.fillStyle = 'rgba(4,5,9,0.65)';
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = pendingSpawn==='boss' ? '#f04d5a' : '#e8c15a';
+    ctx.font = 'bold 44px Georgia';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 26;
+    ctx.fillText(introText, W/2, H/2);
+    ctx.restore();
+  }
+
+  ctx.textAlign = 'left';
+}
+
+// ---------- LOOP ----------
+function loop(ts){
+  if(gameState!=='playing') return;
+  const dt = ts-lastTime; lastTime = ts;
+  update(dt, ts);
+  render();
+  rafId = requestAnimationFrame(loop);
+}
+function resumeLoop(){
+  gameState = 'playing';
+  lastTime = performance.now();
+  rafId = requestAnimationFrame(loop);
+}
+
+// ---------- STORE ----------
+function renderStore(){
+  document.getElementById('storeGold').textContent = 'Gold: ' + gold;
+
+  const elWrap = document.getElementById('storeElements');
+  elWrap.innerHTML = '<h3>Elements</h3>';
+  ELEMENT_ORDER.forEach(key=>{
+    const ed = ELEMENTS[key];
+    const owned = unlocked[key];
+    const cost = ELEMENT_COST[key] || 0;
+    const div = document.createElement('div');
+    div.className = 'store-item';
+    div.innerHTML = `<h4 style="color:${ed.color}">${ed.label}${key==='storm' ? ' ⚡' : ''}</h4>
+      <p>Damage ${ed.damage}${key==='storm' ? ' (highest!)' : ''}</p>
+      <p>Mana cost ${ed.manaCost} • Cooldown ${ed.cooldown}ms</p>
+      <button ${owned ? 'disabled':''} data-buy-el="${key}">${owned ? 'OWNED' : 'Buy — ' + cost + 'g'}</button>`;
+    elWrap.appendChild(div);
+  });
+
+  const boostWrap = document.getElementById('storeBoosts');
+  boostWrap.innerHTML = '<h3>Boosts</h3>';
+  Object.keys(BOOST_DEFS).forEach(key=>{
+    const b = BOOST_DEFS[key];
+    const level = boosts[key];
+    const maxed = b.max && level>=b.max;
+    const cost = Math.round(b.baseCost * Math.pow(b.costMult, level));
+    const div = document.createElement('div');
+    div.className = 'store-item';
+    div.innerHTML = `<h4>${b.name} <span style="color:#8b8778;font-size:11px;">Lv.${level}</span></h4>
+      <p>${b.desc}</p>
+      <button ${maxed ? 'disabled':''} data-buy-boost="${key}">${maxed ? 'MAXED' : 'Buy — ' + cost + 'g'}</button>`;
+    boostWrap.appendChild(div);
+  });
+
+  elWrap.querySelectorAll('[data-buy-el]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const key = btn.dataset.buyEl;
+      const cost = ELEMENT_COST[key];
+      if(!unlocked[key] && gold>=cost){ gold -= cost; unlocked[key] = true; saveProfile(); renderStore(); }
+    };
+  });
+  boostWrap.querySelectorAll('[data-buy-boost]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const key = btn.dataset.buyBoost;
+      const b = BOOST_DEFS[key];
+      const level = boosts[key];
+      if(b.max && level>=b.max) return;
+      const cost = Math.round(b.baseCost*Math.pow(b.costMult, level));
+      if(gold>=cost){
+        gold -= cost; boosts[key]++;
+        refreshPlayerLive();
+        saveProfile();
+        renderStore();
+      }
+    };
+  });
+}
+function openStore(returnTo){
+  storeReturnTo = returnTo;
+  renderStore();
+  showScreen('store');
+}
+
+// ---------- BUTTON WIRING ----------
+document.getElementById('btnToDifficulty').onclick = ()=> showScreen('difficulty');
+document.getElementById('btnBackToStart').onclick = ()=> showScreen('start');
+document.getElementById('btnStore').onclick = ()=> openStore('start');
+document.getElementById('btnStoreBack').onclick = ()=> showScreen(storeReturnTo);
+document.getElementById('btnStoreFromLevel').onclick = ()=> openStore('levelComplete');
+document.getElementById('btnStoreFromGameOver').onclick = ()=> openStore('gameOver');
+document.getElementById('btnStoreFromVictory').onclick = ()=> openStore('victory');
+
+document.querySelectorAll('.diff-card').forEach(card=>{
+  card.onclick = ()=>{
+    difficultyKey = card.dataset.diff;
+    resetRunState();
+    startLevel();
+    showScreen(null);
+    resumeLoop();
+  };
+});
+
+document.getElementById('btnContinueLevel').onclick = ()=>{
+  startLevel();
+  showScreen(null);
+  resumeLoop();
+};
+document.getElementById('btnTryAgain').onclick = ()=>{
+  resetRunState();
+  startLevel();
+  showScreen(null);
+  resumeLoop();
+};
+document.getElementById('btnGoMenu').onclick = ()=>{ showScreen('start'); };
+document.getElementById('btnNextDiff').onclick = ()=>{
+  const idx = DIFF_ORDER.indexOf(difficultyKey);
+  difficultyKey = DIFF_ORDER[Math.min(idx+1, DIFF_ORDER.length-1)];
+  resetRunState();
+  startLevel();
+  showScreen(null);
+  resumeLoop();
+};
+document.getElementById('btnVicMenu').onclick = ()=>{ showScreen('start'); };
+
+document.getElementById('btnGauntlet').onclick = ()=>{
+  difficultyKey = 'easy';
+  resetRunState();
+  gauntletMode = true;
+  gauntletElapsed = 0;
+  startLevel();
+  showScreen(null);
+  resumeLoop();
+};
+document.getElementById('btnLeaderboard').onclick = ()=> openLeaderboardScreen();
+document.getElementById('btnLeaderboardBack').onclick = ()=> showScreen('start');
+document.getElementById('btnViewLeaderboardFromVictory').onclick = ()=> openLeaderboardScreen();
+document.getElementById('btnSubmitScore').onclick = async ()=>{
+  const input = document.getElementById('gauntletNameInput');
+  const btn = document.getElementById('btnSubmitScore');
+  let name = input.value.trim().slice(0,16);
+  if(!name) name = currentDisplayName || 'Anonymous Mage';
+  btn.disabled = true;
+  btn.textContent = 'SUBMITTING…';
+  await submitScore(name, gauntletElapsed);
+  document.getElementById('gauntletSubmit').classList.add('hidden');
+  btn.disabled = false;
+  btn.textContent = 'SUBMIT TIME';
+  openLeaderboardScreen();
+};
+
+document.getElementById('btnLogin').onclick = async ()=>{
+  const input = document.getElementById('loginNameInput');
+  const err = document.getElementById('loginError');
+  const name = input.value.trim();
+  if(!isValidName(name)){
+    err.textContent = 'Name must be 2-16 characters: letters, numbers, spaces, - or _.';
+    return;
+  }
+  err.textContent = '';
+  await loginAs(name, name, 'guest');
+};
+document.getElementById('loginNameInput').addEventListener('keydown', e=>{
+  if(e.key === 'Enter') document.getElementById('btnLogin').click();
+});
+document.getElementById('btnLogout').onclick = async ()=>{
+  if(typeof window.storage !== 'undefined'){
+    try{
+      await window.storage.delete('username', false);
+      await window.storage.delete('login_provider', false);
+    }catch(e){}
+  }
+  if(typeof google !== 'undefined' && google.accounts && google.accounts.id){
+    try{ google.accounts.id.disableAutoSelect(); }catch(e){}
+  }
+  currentUser = null;
+  currentDisplayName = null;
+  document.getElementById('loginNameInput').value = '';
+  document.getElementById('loginError').textContent = '';
+  showScreen('login');
+};
+
+// boot: check for an existing login before showing the menu
+initLogin();
+render();
+window.addEventListener('load', initGoogleSignIn);
+})();
+</script>
+</body>
+</html>
